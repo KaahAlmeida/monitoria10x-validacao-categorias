@@ -22,12 +22,8 @@ st.markdown("""
 
 st.markdown("""
 <div style="margin-top:10px; margin-bottom:10px;">
-Treine a validação de categorias de forma simples e didática.  
-Você pode criar **mais de uma categoria**, cada uma com **até 3 termos**.  
-**Objetivos**:
-- Criar categorias
-- Testar contra transcrições simuladas
-- Avaliar a taxa de acerto de cada categoria
+Treine a validação de categorias de forma clara e didática.  
+Crie **mais de uma categoria**, cada uma com **2-3 termos**, e teste contra transcrições simuladas.
 </div>
 """, unsafe_allow_html=True)
 
@@ -38,7 +34,7 @@ st.divider()
 # =========================
 st.header("1️⃣ Base de Transcrições")
 
-st.info("Esta base simula ligações reais. O campo **Esperado** indica se a categoria deveria acionar ou não.")
+st.info("Esta base simula ligações reais. O campo **Categoria Esperada** indica qual categoria deveria acionar.")
 
 def gerar_transcricoes(base=1):
     if base == 1:
@@ -78,12 +74,11 @@ st.divider()
 st.header("2️⃣ Crie suas Categorias")
 
 st.markdown("""
-Você pode criar **até 3 categorias**.  
-Cada categoria pode ter **até 3 termos** que DEVEM aparecer para acionar a categoria.
+Cada categoria pode ter **2-3 termos**.  
+O **slop** determina a distância máxima entre as palavras da categoria para acionar.
 """)
 
 categorias = []
-
 for i in range(1, 4):
     with st.expander(f"Categoria {i}"):
         nome = st.text_input(f"Nome da Categoria {i}", key=f"nome_{i}")
@@ -91,22 +86,38 @@ for i in range(1, 4):
         termo2 = st.text_input(f"Termo 2 (opcional)", key=f"c{i}_t2")
         termo3 = st.text_input(f"Termo 3 (opcional)", key=f"c{i}_t3")
         lado = st.selectbox(f"Analisar lado da Categoria {i}", ["CLIENTE", "AGENTE", "AMBOS"], key=f"c{i}_lado")
+        slop = st.slider(f"Slop da Categoria {i}", 0, 5, 2, key=f"c{i}_slop")
         termos = [t for t in [termo1, termo2, termo3] if t]
         if nome and termos:
             categorias.append({
                 "nome": nome,
                 "termos": termos,
-                "lado": lado
+                "lado": lado,
+                "slop": slop
             })
 
 st.divider()
 
 # =========================
-# FUNÇÃO DE VALIDAÇÃO
+# FUNÇÃO DE VALIDAÇÃO COM SLOP
 # =========================
-def valida_categoria(texto, termos):
+def valida_slop(texto, termos, slop):
+    tokens = texto.lower().split()
+    indices = []
+    for termo in termos:
+        termo = termo.lower()
+        if termo in tokens:
+            indices.append(tokens.index(termo))
+    if len(indices) < len(termos):
+        return False
+    return max(indices) - min(indices) <= slop
+
+def valida_categoria(texto, termos, slop):
     texto = texto.lower()
-    return all(t.lower() in texto for t in termos)
+    if len(termos) == 1:
+        return termos[0].lower() in texto
+    else:
+        return valida_slop(texto, termos, slop)
 
 # =========================
 # EXECUÇÃO DA VALIDAÇÃO
@@ -127,7 +138,7 @@ if st.button("🔍 Validar Categorias"):
             for _, row in df.iterrows():
                 if cat["lado"] != "AMBOS" and row["Lado"] != cat["lado"]:
                     continue
-                acionou = valida_categoria(row["Transcrição"], cat["termos"])
+                acionou = valida_categoria(row["Transcrição"], cat["termos"], cat["slop"])
                 total += 1
                 if row["Categoria Esperada"] == cat["nome"] and acionou:
                     vp += 1
@@ -153,11 +164,13 @@ if st.button("🔍 Validar Categorias"):
         st.markdown("### 📝 Resultados Detalhados")
         st.dataframe(pd.DataFrame(resultados), use_container_width=True)
 
-        st.markdown("💡 Dica: Ajuste os termos de cada categoria para melhorar a taxa de acerto!")
+        st.markdown("💡 Ajuste os termos e slop de cada categoria para melhorar a taxa de acerto!")
 
 st.divider()
 st.caption("""
 📌 Este simulador é didático. Dados simulados e lógica simplificada para aprendizado.
 """)
+
+
 
 
