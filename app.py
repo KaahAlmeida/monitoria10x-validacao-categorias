@@ -95,25 +95,34 @@ for i in range(1, 4):
 st.divider()
 
 # =========================
-# FUNÇÃO DE VALIDAÇÃO COM SLOP INDIVIDUAL
+# FUNÇÃO DE VALIDAÇÃO COM SLOP REAL
 # =========================
-def valida_slop(texto, termo, slop):
+def valida_slop_entre_termos(texto, termos):
+    """
+    Valida se todos os termos aparecem no texto dentro do seu slop individual.
+    """
     tokens = texto.lower().split()
-    palavra = termo.lower()
-    if palavra not in tokens:
-        return False
-    # encontra todas as posições da palavra no texto
-    indices = [i for i, t in enumerate(tokens) if t == palavra]
-    # Para um único termo, slop não importa
-    if len(tokens) == 1 or slop == 0:
+    indices = []
+    for t in termos:
+        palavra = t["palavra"].lower()
+        slop = t["slop"]
+        # Procura todos os índices da palavra no texto
+        posicoes = [i for i, token in enumerate(tokens) if token == palavra]
+        if not posicoes:
+            return False  # palavra não encontrada
+        indices.append(posicoes[0])  # pega a primeira ocorrência
+
+    # Se só tem 1 termo, aciona direto
+    if len(indices) == 1:
         return True
-    return True  # Placeholder: pode refinar a lógica de distância real depois
+    # Verifica distância entre os termos
+    distancia = abs(indices[1] - indices[0])
+    return distancia <= termos[1]["slop"]
 
 def valida_categoria(texto, termos):
-    for t in termos:
-        if not valida_slop(texto, t["palavra"], t["slop"]):
-            return False
-    return True
+    if not termos:
+        return False
+    return valida_slop_entre_termos(texto, termos)
 
 # =========================
 # EXECUÇÃO DA VALIDAÇÃO
@@ -121,7 +130,6 @@ def valida_categoria(texto, termos):
 st.header("3️⃣ Resultados")
 
 if st.button("🔍 Validar Categorias"):
-
     if not categorias:
         st.warning("Crie pelo menos uma categoria com pelo menos 1 termo.")
     else:
@@ -160,12 +168,14 @@ if st.button("🔍 Validar Categorias"):
         st.markdown("### 📝 Resultados Detalhados")
         st.dataframe(pd.DataFrame(resultados), use_container_width=True)
 
-        st.markdown("💡 Ajuste os termos e slop individual de cada termo para melhorar a taxa de acerto!")
+        st.markdown("💡 Ajuste os termos e slop de cada termo para melhorar a taxa de acerto!")
 
 st.divider()
 st.caption("""
 📌 Este simulador é didático. Dados simulados e lógica simplificada para aprendizado.
 """)
+
+
 
 
 
