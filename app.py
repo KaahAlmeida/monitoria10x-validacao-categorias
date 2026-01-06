@@ -7,12 +7,11 @@ import random
 # =========================
 st.set_page_config(
     page_title="Monitoria 10x | Validação de Categorias",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # =========================
-# CABEÇALHO BONITO
+# CABEÇALHO
 # =========================
 st.markdown("""
 <div style="text-align:center; background-color:#4B8BBE; padding:15px; border-radius:10px">
@@ -23,54 +22,50 @@ st.markdown("""
 
 st.markdown("""
 <div style="margin-top:10px; margin-bottom:10px;">
-Treine a validação de categorias de forma **didática e simples**.  
+Treine a validação de categorias de forma simples e didática.  
+Você pode criar **mais de uma categoria**, cada uma com **até 3 termos**.  
 **Objetivos**:
-- Criar uma categoria
-- Testar em transcrições simuladas
-- Avaliar a **taxa de acerto**
+- Criar categorias
+- Testar contra transcrições simuladas
+- Avaliar a taxa de acerto de cada categoria
 </div>
 """, unsafe_allow_html=True)
 
 st.divider()
 
 # =========================
-# BASE DE TRANSCRIÇÕES
+# BASES DE TRANSCRIÇÕES
 # =========================
 st.header("1️⃣ Base de Transcrições")
 
-st.info(
-    "Esta base simula ligações reais. "
-    "O campo **Esperado** indica se a categoria *deveria* acionar ou não."
-)
+st.info("Esta base simula ligações reais. O campo **Esperado** indica se a categoria deveria acionar ou não.")
 
-# Função para gerar duas bases diferentes
 def gerar_transcricoes(base=1):
     if base == 1:
         dados = [
-            ("CLIENTE", "quero cancelar o contrato porque o atendimento foi péssimo", True),
-            ("CLIENTE", "não recebi minha fatura esse mês", True),
-            ("CLIENTE", "estou ligando apenas para tirar uma dúvida", False),
-            ("CLIENTE", "não quero cancelar, só entender o valor", False),
-            ("CLIENTE", "vou cancelar se isso não for resolvido", True),
-            ("CLIENTE", "o atendimento demorou muito", True),
-            ("AGENTE", "vou verificar sua solicitação no sistema", False),
-            ("AGENTE", "posso ajudar em algo mais?", False),
-            ("AGENTE", "vou encaminhar para o setor responsável", False),
+            ("CLIENTE", "quero cancelar o contrato porque o atendimento foi péssimo", "Cancelamento"),
+            ("CLIENTE", "não recebi minha fatura esse mês", "Fatura"),
+            ("CLIENTE", "estou ligando apenas para tirar uma dúvida", "Duvida"),
+            ("CLIENTE", "não quero cancelar, só entender o valor", "Cancelamento"),
+            ("CLIENTE", "vou cancelar se isso não for resolvido", "Cancelamento"),
+            ("CLIENTE", "o atendimento demorou muito", "Reclamacao"),
+            ("AGENTE", "vou verificar sua solicitação no sistema", "Atendimento"),
+            ("AGENTE", "posso ajudar em algo mais?", "Atendimento"),
+            ("AGENTE", "vou encaminhar para o setor responsável", "Atendimento"),
         ]
     else:
         dados = [
-            ("CLIENTE", "gostaria de encerrar meu plano imediatamente", True),
-            ("CLIENTE", "como posso alterar minha assinatura?", False),
-            ("CLIENTE", "não recebi minha fatura de janeiro", True),
-            ("CLIENTE", "apenas quero esclarecer algumas dúvidas", False),
-            ("CLIENTE", "cancelamento urgente, por favor", True),
-            ("AGENTE", "vou abrir um chamado para você", False),
-            ("AGENTE", "preciso que envie seus documentos", False),
+            ("CLIENTE", "gostaria de encerrar meu plano imediatamente", "Cancelamento"),
+            ("CLIENTE", "como posso alterar minha assinatura?", "Duvida"),
+            ("CLIENTE", "não recebi minha fatura de janeiro", "Fatura"),
+            ("CLIENTE", "apenas quero esclarecer algumas dúvidas", "Duvida"),
+            ("CLIENTE", "cancelamento urgente, por favor", "Cancelamento"),
+            ("AGENTE", "vou abrir um chamado para você", "Atendimento"),
+            ("AGENTE", "preciso que envie seus documentos", "Atendimento"),
         ]
     random.shuffle(dados)
-    return pd.DataFrame(dados, columns=["Lado", "Transcrição", "Esperado"])
+    return pd.DataFrame(dados, columns=["Lado", "Transcrição", "Categoria Esperada"])
 
-# Seleção de base pelo aluno
 base_selecionada = st.selectbox("Escolha a base de transcrições", ["Base 1", "Base 2"])
 df = gerar_transcricoes(base=1 if base_selecionada=="Base 1" else 2)
 st.dataframe(df, use_container_width=True)
@@ -78,103 +73,91 @@ st.dataframe(df, use_container_width=True)
 st.divider()
 
 # =========================
-# CONFIGURAÇÃO DA CATEGORIA
+# CONFIGURAÇÃO DE CATEGORIAS
 # =========================
-st.header("2️⃣ Configuração da Categoria")
+st.header("2️⃣ Crie suas Categorias")
 
 st.markdown("""
-Configure sua categoria de forma simples: **somente termos que DEVEM conter**.
+Você pode criar **até 3 categorias**.  
+Cada categoria pode ter **até 3 termos** que DEVEM aparecer para acionar a categoria.
 """)
 
-termos_contem = st.text_area(
-    "Termos que DEVEM conter",
-    placeholder="cancelar, cancelar contrato"
-)
+categorias = []
 
-lado = st.selectbox("Analisar lado", ["CLIENTE", "AGENTE", "AMBOS"])
+for i in range(1, 4):
+    with st.expander(f"Categoria {i}"):
+        nome = st.text_input(f"Nome da Categoria {i}", key=f"nome_{i}")
+        termo1 = st.text_input(f"Termo 1", key=f"c{i}_t1")
+        termo2 = st.text_input(f"Termo 2 (opcional)", key=f"c{i}_t2")
+        termo3 = st.text_input(f"Termo 3 (opcional)", key=f"c{i}_t3")
+        lado = st.selectbox(f"Analisar lado da Categoria {i}", ["CLIENTE", "AGENTE", "AMBOS"], key=f"c{i}_lado")
+        termos = [t for t in [termo1, termo2, termo3] if t]
+        if nome and termos:
+            categorias.append({
+                "nome": nome,
+                "termos": termos,
+                "lado": lado
+            })
 
 st.divider()
 
 # =========================
-# FUNÇÕES DE VALIDAÇÃO
+# FUNÇÃO DE VALIDAÇÃO
 # =========================
 def valida_categoria(texto, termos):
     texto = texto.lower()
-    termos_c = [t.strip() for t in termos.split(",") if t.strip()]
-    if not termos_c:
-        return False
-    # Verifica se todos os termos obrigatórios estão presentes
-    return all(t.lower() in texto for t in termos_c)
+    return all(t.lower() in texto for t in termos)
 
 # =========================
 # EXECUÇÃO DA VALIDAÇÃO
 # =========================
-st.header("3️⃣ Resultado da Validação")
+st.header("3️⃣ Resultados")
 
-if st.button("🔍 Validar Categoria"):
-    resultados = []
+if st.button("🔍 Validar Categorias"):
 
-    for _, row in df.iterrows():
-        if lado != "AMBOS" and row["Lado"] != lado:
-            continue
-
-        acionou = valida_categoria(row["Transcrição"], termos_contem)
-
-        resultados.append({
-            "Lado": row["Lado"],
-            "Transcrição": row["Transcrição"],
-            "Esperado": "Sim" if row["Esperado"] else "Não",
-            "Categoria acionou": "Sim" if acionou else "Não"
-        })
-
-    res = pd.DataFrame(resultados)
-
-    # =========================
-    # MÉTRICAS VISUAIS
-    # =========================
-    vp = len(res[(res["Esperado"] == "Sim") & (res["Categoria acionou"] == "Sim")])
-    fp = len(res[(res["Esperado"] == "Não") & (res["Categoria acionou"] == "Sim")])
-    fn = len(res[(res["Esperado"] == "Sim") & (res["Categoria acionou"] == "Não")])
-    vn = len(res[(res["Esperado"] == "Não") & (res["Categoria acionou"] == "Não")])
-
-    total = vp + fp + fn + vn
-    taxa_acerto = round(((vp + vn) / total) * 100, 2) if total else 0
-
-    st.markdown("### 📊 Métricas da Categoria")
-    col_a, col_b, col_c = st.columns(3)
-
-    with col_a:
-        st.markdown(f'<div style="background-color:#D1F2EB; padding:15px; border-radius:10px; text-align:center">'
-                    f'<h3>✅ Verdadeiro Positivo</h3><h2>{vp}</h2></div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="background-color:#F5B7B1; padding:15px; border-radius:10px; text-align:center; margin-top:10px">'
-                    f'<h3>❌ Falso Positivo</h3><h2>{fp}</h2></div>', unsafe_allow_html=True)
-
-    with col_b:
-        st.markdown(f'<div style="background-color:#F5B7B1; padding:15px; border-radius:10px; text-align:center">'
-                    f'<h3>❌ Falso Negativo</h3><h2>{fn}</h2></div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="background-color:#D1F2EB; padding:15px; border-radius:10px; text-align:center; margin-top:10px">'
-                    f'<h3>✅ Verdadeiro Negativo</h3><h2>{vn}</h2></div>', unsafe_allow_html=True)
-
-    with col_c:
-        st.markdown(f'<div style="background-color:#F9E79F; padding:20px; border-radius:10px; text-align:center">'
-                    f'<h3>🎯 Taxa de Acerto (%)</h3><h2>{taxa_acerto}</h2></div>', unsafe_allow_html=True)
-
-    st.divider()
-
-    st.markdown("### 📝 Resultados Detalhados")
-    st.dataframe(res, use_container_width=True)
-
-    st.markdown("### 💡 Feedback")
-    if taxa_acerto >= 85:
-        st.success("Excelente! Sua categoria está bem ajustada.")
-    elif taxa_acerto >= 65:
-        st.warning("Categoria razoável. Tente melhorar os termos.")
+    if not categorias:
+        st.warning("Crie pelo menos uma categoria com pelo menos 1 termo.")
     else:
-        st.error("Categoria mal ajustada. Revise os termos ou a base de transcrições.")
+        resultados = []
+        metrics = []
+
+        for cat in categorias:
+            vp = 0
+            total = 0
+            for _, row in df.iterrows():
+                if cat["lado"] != "AMBOS" and row["Lado"] != cat["lado"]:
+                    continue
+                acionou = valida_categoria(row["Transcrição"], cat["termos"])
+                total += 1
+                if row["Categoria Esperada"] == cat["nome"] and acionou:
+                    vp += 1
+                resultados.append({
+                    "Categoria": cat["nome"],
+                    "Transcrição": row["Transcrição"],
+                    "Acionou": "Sim" if acionou else "Não"
+                })
+            taxa = round((vp / total) * 100, 2) if total else 0
+            metrics.append({"Categoria": cat["nome"], "Taxa de Acerto": taxa})
+
+        # =========================
+        # DASHBOARD DE MÉTRICAS
+        # =========================
+        st.markdown("### 📊 Taxa de Acerto por Categoria")
+        col_count = len(metrics)
+        cols = st.columns(col_count)
+        for idx, m in enumerate(metrics):
+            cols[idx].markdown(f'<div style="background-color:#F9E79F; padding:15px; border-radius:10px; text-align:center">'
+                               f'<h3>{m["Categoria"]}</h3><h2>{m["Taxa de Acerto"]}%</h2></div>', unsafe_allow_html=True)
+
+        st.divider()
+        st.markdown("### 📝 Resultados Detalhados")
+        st.dataframe(pd.DataFrame(resultados), use_container_width=True)
+
+        st.markdown("💡 Dica: Ajuste os termos de cada categoria para melhorar a taxa de acerto!")
 
 st.divider()
 st.caption("""
-📌 Importante:  
-Este simulador é didático. A lógica é a mesma da ferramenta real,  
-mas os dados são simulados para fins de aprendizado.
+📌 Este simulador é didático. Dados simulados e lógica simplificada para aprendizado.
 """)
+
+
