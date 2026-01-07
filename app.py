@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 # =========================================================
-# CONFIGURAÇÃO DA PÁGINA (OBRIGATORIAMENTE PRIMEIRO)
+# CONFIGURAÇÃO DA PÁGINA (SEMPRE PRIMEIRA LINHA)
 # =========================================================
 st.set_page_config(
     page_title="Monitoria 10x – Validação de Categorias",
@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# FUNÇÕES DE MATCH (LÓGICA CORRETA COM SLOP REAL)
+# FUNÇÕES DE MATCH (COM SLOP REAL)
 # =========================================================
 def normalizar(texto):
     texto = texto.lower()
@@ -25,11 +25,9 @@ def termo_bate(transcricao, termo, slop):
     if not termo_tokens:
         return False
 
-    # termo com uma palavra
     if len(termo_tokens) == 1:
         return termo_tokens[0] in trans_tokens
 
-    # termo com mais de uma palavra (com slop)
     for i in range(len(trans_tokens)):
         if trans_tokens[i] == termo_tokens[0]:
             idx = i
@@ -52,16 +50,27 @@ def categoria_bate(transcricao, termos):
     return False
 
 # =========================================================
-# CABEÇALHO
+# CABEÇALHO VISUAL
 # =========================================================
-st.title("🎧 Monitoria 10x – Validação de Categorias")
-st.caption("Simulador didático de Speech Analytics")
+st.markdown(
+    """
+    <div style="padding:20px 0;">
+        <h1 style="margin-bottom:0;">🎧 Monitoria 10x – Validação de Categorias</h1>
+        <p style="color:gray; margin-top:5px;">
+            Simulador didático de Speech Analytics
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.divider()
 
 # =========================================================
-# BASE FIXA DE TRANSCRIÇÕES (COM OPÇÃO DE TROCAR)
+# BASE DE TRANSCRIÇÕES
 # =========================================================
+st.subheader("📄 Base de Transcrições")
+
 base = pd.DataFrame({
     "Lado": [
         "CLIENTE", "CLIENTE", "CLIENTE", "CLIENTE",
@@ -83,32 +92,31 @@ base = pd.DataFrame({
     ]
 })
 
-st.subheader("📄 Base de Transcrições")
 st.dataframe(base, use_container_width=True)
 
 # =========================================================
-# ESCOLHA DA TRANSCRIÇÃO PARA TESTE
+# ESCOLHA DA TRANSCRIÇÃO
 # =========================================================
-st.subheader("🎯 Escolha uma transcrição para validar")
+st.subheader("🎯 Escolha uma transcrição para validação")
 
 linha = st.selectbox(
     "Selecione o índice da transcrição:",
     base.index
 )
 
-transcricao_selecionada = base.loc[linha, "Transcrição"]
+transcricao = base.loc[linha, "Transcrição"]
 categoria_esperada = base.loc[linha, "Categoria Esperada"]
 
-st.info(f"**Transcrição selecionada:** {transcricao_selecionada}")
-st.info(f"**Categoria esperada:** {categoria_esperada}")
+st.info(f"📝 **Transcrição selecionada:** {transcricao}")
+st.info(f"🎯 **Categoria esperada:** {categoria_esperada}")
 
 # =========================================================
-# CRIAÇÃO DAS CATEGORIAS PELO ALUNO
+# CRIAÇÃO DE CATEGORIAS
 # =========================================================
-st.subheader("🧠 Criação de Categorias")
+st.subheader("🧠 Construção das Categorias")
 
-qtd_categorias = st.number_input(
-    "Quantas categorias deseja criar?",
+qtd = st.number_input(
+    "Quantas categorias você deseja criar?",
     min_value=1,
     max_value=5,
     value=1
@@ -116,17 +124,17 @@ qtd_categorias = st.number_input(
 
 categorias = []
 
-for i in range(qtd_categorias):
+for i in range(qtd):
     st.markdown(f"### Categoria {i+1}")
-    nome = st.text_input(f"Nome da categoria {i+1}", key=f"cat_nome_{i}")
+    nome = st.text_input(f"Nome da categoria", key=f"nome_{i}")
 
     termos = []
 
-    for t in range(2):  # NO MÁXIMO 2 TERMOS
+    for t in range(2):
         col1, col2 = st.columns([3, 1])
         with col1:
-            texto_termo = st.text_input(
-                f"Termo {t+1} da categoria {i+1}",
+            termo = st.text_input(
+                f"Termo {t+1}",
                 key=f"termo_{i}_{t}"
             )
         with col2:
@@ -138,11 +146,8 @@ for i in range(qtd_categorias):
                 key=f"slop_{i}_{t}"
             )
 
-        if texto_termo.strip():
-            termos.append({
-                "texto": texto_termo,
-                "slop": slop
-            })
+        if termo.strip():
+            termos.append({"texto": termo, "slop": slop})
 
     if nome.strip() and termos:
         categorias.append({
@@ -151,34 +156,35 @@ for i in range(qtd_categorias):
         })
 
 # =========================================================
-# AVALIAÇÃO
+# VALIDAÇÃO
 # =========================================================
 st.divider()
-st.subheader("📊 Resultado da Validação")
+st.subheader("📊 Resultado")
 
 if st.button("Validar Categorias"):
-    categorias_detectadas = []
+    detectadas = []
 
     for cat in categorias:
-        if categoria_bate(transcricao_selecionada, cat["termos"]):
-            categorias_detectadas.append(cat["nome"])
+        if categoria_bate(transcricao, cat["termos"]):
+            detectadas.append(cat["nome"])
 
-    if categorias_detectadas:
-        st.success(f"Categorias detectadas: {', '.join(categorias_detectadas)}")
+    if detectadas:
+        st.success(f"Categorias detectadas: {', '.join(detectadas)}")
     else:
         st.warning("Nenhuma categoria foi detectada.")
 
-    # Pontuação simples e clara (didática)
-    if categoria_esperada in categorias_detectadas:
-        st.success("✅ Parabéns! A categoria correta foi identificada.")
+    if categoria_esperada in detectadas:
+        st.success("✅ Categoria correta identificada!")
     else:
-        st.error("❌ A categoria correta não foi identificada.")
+        st.error("❌ Categoria correta NÃO foi identificada.")
 
 # =========================================================
 # RODAPÉ
 # =========================================================
 st.divider()
-st.caption("Simulador educacional • Monitoria 10x")
+st.caption("Monitoria 10x • Simulador educacional")
+
+
 
 
 
