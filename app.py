@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # =========================
-# CABEÇALHO (MANTIDO)
+# CABEÇALHO
 # =========================
 st.markdown("""
 <div style="text-align:center; background-color:#4B8BBE; padding:15px; border-radius:10px">
@@ -147,7 +147,8 @@ if st.button("🔍 Validar Categorias"):
             acionou = valida_categoria(row["Transcrição"], cat["termos"])
             total += 1
 
-            if acionou and row["Categoria Esperada"] == cat["nome"]:
+            # CORREÇÃO DA PONTUAÇÃO: agora contabiliza mesmo se o nome for diferente
+            if acionou and cat["nome"].lower() in row["Categoria Esperada"].lower():
                 acertos += 1
 
             resultados.append({
@@ -181,6 +182,8 @@ if st.button("🔍 Validar Categorias"):
 
 st.divider()
 st.caption("📌 Simulador didático – Monitoria 10x")
+
+
 
 
 
