@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import random
@@ -91,7 +92,7 @@ for i in range(1, 4):
 st.divider()
 
 # =========================
-# FUNÇÕES DE MATCH (CORRIGIDAS)
+# FUNÇÕES DE MATCH
 # =========================
 def normalizar(texto):
     texto = texto.lower()
@@ -147,8 +148,11 @@ if st.button("🔍 Validar Categorias"):
             acionou = valida_categoria(row["Transcrição"], cat["termos"])
             total += 1
 
-            # CORREÇÃO DA PONTUAÇÃO: agora contabiliza mesmo se o nome for diferente
-            if acionou and cat["nome"].lower() in row["Categoria Esperada"].lower():
+            # ✅ Correção: compara Categoria Esperada com nome da categoria de forma parcial
+            esperada = row["Categoria Esperada"].strip().lower()
+            nome_cat = cat["nome"].strip().lower()
+
+            if acionou and (esperada in nome_cat or nome_cat in esperada):
                 acertos += 1
 
             resultados.append({
@@ -182,6 +186,8 @@ if st.button("🔍 Validar Categorias"):
 
 st.divider()
 st.caption("📌 Simulador didático – Monitoria 10x")
+
+
 
 
 
